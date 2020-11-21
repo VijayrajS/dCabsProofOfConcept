@@ -33,7 +33,7 @@ contract DCabs {
     //!< Structure that stores the details of drivers in the system
     
     struct Driver{
-        bytes32 driverLicense;  //!< A verifiable hash of the driver's license
+        uint driverLicense;     //!< A verifiable hash of the driver's license
         uint reputation;        //!< Reputation score of the driver
         Trip[] driverTrips;     //!< List of all trips undertaken by the driver 
         bool registered;        //!< A boolean variable that determines whether the driver is registered or not
@@ -52,22 +52,39 @@ contract DCabs {
     mapping(address => TripRequest) activeTrips;  //!< Mapping b/w a driver address and a TripRequest object (corresponding to an ongoing trip)
     mapping(address => Trip) currentTrip;         //!< SUS (?)
     
-    function setPickup(bytes32 encryptedPickup, address driverRequested){
+    // Function to register a driver into the system
+    function registerDriver public(address driverAddr, uint license){
+        require(msg.sender == auditor);
+        drivers[driverAddr].driverLicense = license;
+        drivers[driverAddr].registered = true;
+    }
+    
+    // Function to send a pickup request to a particular driver and pay a flat fee amount
+    function setPickup(bytes32 encryptedPickup, address driverRequested) public payable{
+        require(msg.value == 1 ether, "PAY UP THE MANDATORY FEE");
         activeTrips[driverRequested].encryptedPickup = encyptedPickup;
     }
     
-    function acceptTrip(bytes32 driverPhoneNumEncrpyted){
+    // Function for driver to accept the trip
+    function acceptTrip(bytes32 driverPhoneNumEncrpyted) public {
         require(drivers[msg.sender].registered);
         activeTrips[msg.sender].accepted = true;
         activeTrips[msg.sender].driverPhoneNumEncrpyted = driverPhoneNumEncrpyted
-        enterTripDetails(msg.sender, activeTrips[msg.sender].customer, activeTrips[msg.sender].pickupHash, activeTrips[msg.sender].destHash  );
+        enterTripDetails(msg.sender, activeTrips[msg.sender].customer, activeTrips[msg.sender].pickupHash, activeTrips[msg.sender].destHash);
     }
     
-    function setPickup(bytes32 encryptedPickup, address driverRequested){
+    // Function to 
+    function enterTripDetails(bytes32 driverAddress, bytes32 customerAddress, bytes32 pickupHash, bytes32 destHash){
+        
+    }
+    
+    // Wait what
+    function cancelRequest(bytes32 encryptedPickup, address driverRequested){
         activeTrips[driverRequested].encryptedPickup = encyptedPickup;
     }
     
     function endTrip(bytes32 encryptedPickup, address driverRequested){
+        require(currentTrip[msg.sender]);
         currentTrip[msg.sender].canEnd += 1;
         if(currentTrip[msg.sender].canEnd == 2){
             trip = currentTrip[msg.sender];
@@ -84,7 +101,7 @@ contract DCabs {
         }
     }
     
-    function setPickup(bytes32 encryptedPickup, address driverRequested){
+    function cancelTrip(bytes32 encryptedPickup, address driverRequested){
         trip = currentTrip[msg.sender];
         trip.price = getPrice();
         if(msg.sender is not a driver)
