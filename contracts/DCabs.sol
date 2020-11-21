@@ -50,7 +50,7 @@ contract DCabs {
     mapping(address => Customer) customers;       //!< Mapping b/w a customer profile and his wallet address
     mapping(address => Driver) drivers;           //!< Mapping b/w a driver profile and his wallet address
     mapping(address => TripRequest) activeTrips;  //!< Mapping b/w a driver address and a TripRequest object (corresponding to an ongoing trip)
-    mapping(address => Trip) currentTrip;         //!< SUS (?)
+    mapping(uint => Trip) currentTrip;            //!< Mapping b/w an OTP and a trip object
     
     // Function to register a driver into the system
     function registerDriver public(address driverAddr, uint license){
@@ -66,16 +66,19 @@ contract DCabs {
     }
     
     // Function for driver to accept the trip
-    function acceptTrip(bytes32 driverPhoneNumEncrpyted) public {
+    function acceptTrip(bytes32 driverPhoneNumEncrpyted, uint otp) public {
         require(drivers[msg.sender].registered);
         activeTrips[msg.sender].accepted = true;
         activeTrips[msg.sender].driverPhoneNumEncrpyted = driverPhoneNumEncrpyted
-        enterTripDetails(msg.sender, activeTrips[msg.sender].customer, activeTrips[msg.sender].pickupHash, activeTrips[msg.sender].destHash);
+        enterTripDetails(msg.sender, activeTrips[msg.sender].customer, activeTrips[msg.sender].pickupHash, activeTrips[msg.sender].destHash, otp);
     }
     
-    // Function to 
-    function enterTripDetails(bytes32 driverAddress, bytes32 customerAddress, bytes32 pickupHash, bytes32 destHash){
-        
+    // Function to populate the currentTrip mapping while confirming a ride
+    function enterTripDetails(bytes32 dAddr, bytes32 cAddr, bytes32 pcHash, bytes32 dHash, uint otp){
+        currentTrip[otp].pickupHash = pcHash;
+        currentTrip[otp].destHash = dHash;
+        currentTrip[otp].driverAddr = dAddr;
+        currentTrip[otp].customerAddr = cAddr;
     }
     
     // Wait what
@@ -83,11 +86,15 @@ contract DCabs {
         activeTrips[driverRequested].encryptedPickup = encyptedPickup;
     }
     
-    function endTrip(bytes32 encryptedPickup, address driverRequested){
-        require(currentTrip[msg.sender]);
-        currentTrip[msg.sender].canEnd += 1;
-        if(currentTrip[msg.sender].canEnd == 2){
-            trip = currentTrip[msg.sender];
+    // Function to end the trip, called by driver and customer
+    
+    function endTrip(bytes32 encryptedPickup, address driverRequested, uint otp, uint rating){
+        require(currentTrip[otp] == false, "Trip is already done");
+        
+        currentTrip[otp].canEnd += 1;
+        if(currentTrip[otp].canEnd == 2){
+            
+            trip = currentTrip[otp];
             trip.price = getPrice();
             trip.driverAddr.transfer(trip.price);
             trip.customerAddr.transfer(customer[trip.customerAddr].paid - trip.price);
@@ -96,12 +103,13 @@ contract DCabs {
                 updateReputation(rating, trip.customerAddr);
                 updateUniqueDrivers(trip.customerAddr, trip.driverAddr);
             }
+            
             customers[trip.customerAddr].trips.push(trip);
             drivers[trip.driverAddr].trips.push(trip);
         }
     }
     
-    function cancelTrip(bytes32 encryptedPickup, address driverRequested){
+    function cancelTrip(bytes32 encryptedPickup, address driverRequested, uint otp){
         trip = currentTrip[msg.sender];
         trip.price = getPrice();
         if(msg.sender is not a driver)
@@ -111,7 +119,19 @@ contract DCabs {
         
         customers[trip.customerAddr].trips.push(trip);
         drivers[trip.driverAddr].trips.push(trip);
-        //Similar format to endTrip < Getting Rating etc.>
+        
+        trip = currentTrip[otp];
+            trip.price = getPrice();
+            trip.driverAddr.transfer(trip.price);
+            trip.customerAddr.transfer(customer[trip.customerAddr].paid - trip.price);
+        /*
+        if(msg.sender == trip.customerAddr){
+            updateReputation(rating, trip.customerAddr);
+            updateUniqueDrivers(trip.customerAddr, trip.driverAddr);
+        }
+        customers[trip.customerAddr].trips.push(trip);
+        drivers[trip.driverAddr].trips.push(trip);
+        */
     }
     
     // An empty payable function to make the contract payabl
