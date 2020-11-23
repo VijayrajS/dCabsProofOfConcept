@@ -30,9 +30,9 @@ contract DCabs {
     //!< request to a particular driver
     
     struct TripRequest {
+        bool requestMade; //!< Whether a customer has made this request
         bytes32 encryptedPickup; //!< pickup location encrypted with the PubKey of the requsted driver 
-        address customer;        //!< Wallet address of the customer
-        uint driverPhoneNumEncrpyted; /* SUS */
+        uint driverPhoneNumEncrpyted; //!< phone number of driver encrpyted with the customer's key
         bool accepted;           //!< Boolean variable that determines whether the driver has accepted the request
     }
     
@@ -58,7 +58,7 @@ contract DCabs {
     
     mapping(address => Customer) customers;       //!< Mapping b/w a customer profile and his wallet address
     mapping(address => Driver) drivers;           //!< Mapping b/w a driver profile and his wallet address
-    mapping(address => TripRequest) activeTrips;  //!< Mapping b/w a driver address and a TripRequest object (corresponding to an ongoing trip)
+    mapping(address => mapping(address => TripRequest)) activeTrips;  //!< Mapping b/w a driver address and a TripRequest object (corresponding to an ongoing trip)
     mapping(uint => Trip) currentTrip;            //!< Mapping b/w an OTP and a trip object
     uint cur;                                     //!< Variable storing most recent OTP
 
@@ -77,18 +77,20 @@ contract DCabs {
             customers[msg.sender].uniqueDrivers = 0;
             customers[msg.sender].exists = true;
         }
+        TripRequest requestObj;
         customers[msg.sender].paid += msg.value;
-        activeTrips[driverRequested].encryptedPickup = encyptedPickup;
+        activeTrips[driverRequested][msg.sender].requestMade = true;
+        activeTrips[driverRequested][msg.sender].encryptedPickup = encryptedPickup;
     }
-    // IMPLEMENT MULTIPLE CUSTOMER REQUESTS THE SAME DRIVER.
 
     
     // Function for driver to accept the trip
-    function acceptTrip(bytes32 driverPhoneNumEncrpyted) public returns(uint) {
-        require(drivers[msg.sender].registered);
-        activeTrips[msg.sender].accepted = true;
-        activeTrips[msg.sender].driverPhoneNumEncrpyted = driverPhoneNumEncrpyted
-        enterTripDetails(msg.sender, activeTrips[msg.sender].customer, activeTrips[msg.sender].pickupHash, activeTrips[msg.sender].destHash, cur);
+    function acceptTrip(bytes32 driverPhoneNumEncrpyted, address customer) public returns(uint) {
+        require(drivers[msg.sender].registered, "Driver doesn't exist");
+        require(activeTrips[msg.sender][customer].requestMade, "Invalid customer");
+        activeTrips[msg.sender][customer].accepted = true;
+        activeTrips[msg.sender][customer].driverPhoneNumEncrpyted = driverPhoneNumEncrpyted;
+        enterTripDetails(msg.sender, customer, activeTrips[msg.sender].pickupHash, activeTrips[msg.sender].destHash, cur);
         return cur++;
     }
     
@@ -101,9 +103,11 @@ contract DCabs {
         currentTrip[otp].startTime = now;
     }
     
-    // Wait what
-    function cancelRequest(bytes32 encryptedPickup, address driverRequested){
-        require()
+    // Customer cancels the trip request.
+    function cancelRequest(address driverRequested, uint index){
+        require(index < activeTrips[driverRequested].length, "Invalide request index");
+        require(activeTrips[driverRequested].customer == msg.sender, "Can only cancel your own requests");
+
         activeTrips[driverRequested].encryptedPickup = encyptedPickup;
         msg.sender
     }
