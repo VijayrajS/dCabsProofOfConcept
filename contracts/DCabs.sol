@@ -1,4 +1,8 @@
 pragma solidity ^0.5.10;
+// TODO : 
+// * CancelRequest
+// * updateReputation
+// * updateUniqueDrivers
 
 contract DCabs {
     
@@ -88,7 +92,7 @@ contract DCabs {
     }
     
     // Function to populate the currentTrip mapping while confirming a ride
-    function enterTripDetails(bytes32 dAddr, bytes32 cAddr, bytes32 pcHash, bytes32 dHash, uint otp){
+    function enterTripDetails(bytes32 dAddr, bytes32 cAddr, bytes32 pcHash, bytes32 dHash, uint otp) pure internal{
         currentTrip[otp].pickupHash = pcHash;
         currentTrip[otp].destHash = dHash;
         currentTrip[otp].driverAddr = dAddr;
@@ -115,17 +119,22 @@ contract DCabs {
     
     function endTrip(bytes32 encryptedPickup, address driverRequested, uint otp, uint rating){
         require(!currentTrip[otp].customerEnded || !currentTrip[otp].driverEnded, "Trip is already done");
-        require(currentTrip[otp].customerAddr == msg.sender || currentTrip[otp].driverAddr == msg.sender);
+        require(currentTrip[otp].customerAddr == msg.sender || currentTrip[otp].driverAddr == msg.sender, "Unauthorised to end trip");
         
-
+        // Customer has ended the trip from his/her side  (Update the reputation of the driver)
+        
         if(msg.sender == trip.customerAddr && !currentTrip[otp].customerEnded){
             updateReputation(rating, trip.driverAddr, trip.customerAddr);
             currentTrip[otp].customerEnded = true;
         }
+        // Driver has ended the trip from his/her side
         else{
             currentTrip[otp].driverEnded = true;
         }
 
+        // After both have ended the trip, transfer money for trip and update the number of
+        // unique drivers for the customer
+        
         if( currentTrip[otp].driverEnded &&  currentTrip[otp].customerEnded){
             
             trip = currentTrip[otp];
@@ -134,25 +143,46 @@ contract DCabs {
             trip.customerAddr.transfer(customer[trip.customerAddr].paid - trip.price);
             trip.endTime = now;
             updateUniqueDrivers(trip.customerAddr, trip.driverAddr);
-            // customers[trip.customerAddr].trips.push(trip);
-            // drivers[trip.driverAddr].trips.push(trip);
         }
     }
     
-    function cancelTrip(bytes32 encryptedPickup, address driverRequested, uint otp){
-        require(currentTrip[otp].customerAddr == msg.sender || currentTrip[otp].driverAddr == msg.sender);
+    // Function to update the list of drivers the customer has ridden with
+    function updateUniqueDrivers (address customer, address driver) pure internal{
+        
+    }
+    
+    // Function to update the list of drivers the customer has ridden with
+    function updateReputation (int rating, address customer, address driver) pure internal{
+        require(rating <= 5 && rating > 0, "Invalid Rating");
+        
+    }
+    
+    // Function to cancel trip (either by the customer or driver)
+    
+    function cancelTrip(bytes32 encryptedPickup, address driverRequested, uint otp) public{
+        require(currentTrip[otp].customerAddr == msg.sender || currentTrip[otp].driverAddr == msg.sender, "Unauthorised to cancel trip");
+        
         trip = currentTrip[otp];
         trip.endTime = now;
-        // customers[trip.customerAddr].trips.push(trip);
-        // drivers[trip.driverAddr].trips.push(trip);
+        
+        // If the customer cancels the trip midway, the driver gets paid for whatever
+        // distance he has driven
+        
         if(msg.sender == trip.customerAddr){
             trip.price = getPrice(trip.startTime, trip.endTime);
         }
+        
+        // If the driver ends the trip, he gets no money from the trip
+        
         else{
             trip.price = 0;
         }
+        
+        // Money transfer for the trip
         trip.driverAddr.transfer(trip.price);
         trip.customerAddr.transfer(customer[trip.customerAddr].paid - trip.price);
+        
+        // Ending trip from both sides
         currentTrip[otp].customerEnded = true;
         currentTrip[otp].driverEnded = true;
     }
