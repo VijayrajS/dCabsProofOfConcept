@@ -1,6 +1,6 @@
 pragma solidity ^0.5.10;
 
-contract DCabs {
+contract Dcabs {
     
     address public auditor; //!< Person who authorises the registration of a cab driver into the system
     
@@ -26,11 +26,11 @@ contract DCabs {
     //!< request to a particular driver
     
     struct TripRequest {
-        bool requestMade; //!< Whether a customer has made this request
-        bytes32 encryptedPickup; //!< pickup location encrypted with the PubKey of the requsted driver 
-        bytes32 encryptedDest; //!< pickup location encrypted with the PubKey of the requsted driver 
+        bool requestMade;                //!< Whether a customer has made this request
+        bytes32 encryptedPickup;         //!< pickup location encrypted with the PubKey of the requsted driver 
+        bytes32 encryptedDest;           //!< pickup location encrypted with the PubKey of the requsted driver 
         bytes32 driverPhoneNumEncrpyted; //!< phone number of driver encrpyted with the customer's key
-        bool accepted;           //!< Boolean variable that determines whether the driver has accepted the request
+        bool accepted;                   //!< Boolean variable that determines whether the driver has accepted the request
     }
     
     //!< Structure that stores the details of drivers in the system
@@ -45,19 +45,24 @@ contract DCabs {
     //!< Structure that stores the details of a customer
     
     struct Customer{
-        uint paid;              //!< The amount of money the customer has deposited in the contract
-        Trip[] customerTrips;   //!< List of all trips embarked on by the customer
-        bool exists;            //!< Whether this customer has used the app before
+        uint paid;               //!< The amount of money the customer has deposited in the contract
+        Trip[] customerTrips;    //!< List of all trips embarked on by the customer
+        bool exists;             //!< Whether this customer has used the app before
         uint nUniqueDrivers;     //!< Number of unique cab drivers the customer has ridden with
+        
         mapping(address => bool) uniqueDriversMap; //!< A hashmap to determine whether a driver has ridden with the customer before 
     }
     
     mapping(address => Customer) customers;       //!< Mapping b/w a customer profile and his wallet address
     mapping(address => Driver) drivers;           //!< Mapping b/w a driver profile and his wallet address
-    mapping(address => mapping(address => TripRequest)) activeTrips;  //!< Mapping b/w a driver address and a TripRequest object (corresponding to an ongoing trip)
     mapping(uint => Trip) currentTrip;            //!< Mapping b/w an OTP and a trip object
+    mapping(address => mapping(address => TripRequest)) activeTrips;  //!< Mapping b/w a driver address and a TripRequest object (corresponding to an ongoing trip)
     uint cur;                                     //!< Variable storing most recent OTP
-    uint nDrivers = 0;
+    uint public nDrivers = 0;
+    
+    constructor() public{
+        auditor = msg.sender;
+    }
 
     // Function to register a driver into the system
     function registerDriver (address driverAddr, uint license) public{
@@ -137,7 +142,7 @@ contract DCabs {
         // After both have ended the trip, transfer money for trip and update the number of
         // unique drivers for the customer
         
-        if( currentTrip[otp].driverEnded &&  currentTrip[otp].customerEnded){
+        if(currentTrip[otp].driverEnded &&  currentTrip[otp].customerEnded){
             
             currentTrip[otp].price = getPrice(currentTrip[otp].startTime, currentTrip[otp].endTime);
             currentTrip[otp].driverAddr.transfer(currentTrip[otp].price);
