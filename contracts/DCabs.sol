@@ -9,13 +9,13 @@ contract Dcabs {
         bytes32 pickupHash; //!< Hash of the pickup address
         bytes32 destHash;   //!< Hash of the destination address 
         
-        uint256 startTime; //!< Time of trip start
-        uint256 endTime; //!< Time of trip end
+        uint startTime; //!< Time of trip start
+        uint endTime; //!< Time of trip end
 
         address payable driverAddr;   //!< Wallet address of the driver involved
         address payable customerAddr; //!< Wallet address of the customer involved
         
-        uint256 price;           //!< Expense of the trip
+        uint price;           //!< Expense of the trip
         uint rating;          //!< Rating of the 
         string comments;      //!< Customer comments of the ride
         bool customerEnded;   //!< Whether the customer is ready to end the trip
@@ -79,7 +79,7 @@ contract Dcabs {
     
     // Function to send a pickup request to a particular driver and pay a flat fee amount
     function setPickup(bytes32 encryptedPickup, bytes32 encryptedDest, address driverRequested) public payable{
-        require(msg.value >= 10000, "PAY UP THE MANDATORY FEE");
+        require(msg.value >= 1000000, "PAY UP THE MANDATORY FEE");
         if(!customers[msg.sender].exists){
             customers[msg.sender].paid = 0;
             customers[msg.sender].nUniqueDrivers = 0;
@@ -120,10 +120,11 @@ contract Dcabs {
     }
     
     // Linear function to get price based on time
-    function getPrice(uint256 start, uint256 end) pure internal returns (uint256){
-        uint256 flat = 100000;
-        uint256 scale = 1000;
-        uint256 dur = end - start;
+    function getPrice(uint start, uint end) pure internal returns (uint){
+        require(end >= start, "ended before start");
+        uint flat = 1000;
+        uint scale = 2;
+        uint dur = (end - start)/60;
         return flat + dur*scale;
     }
 
@@ -148,11 +149,11 @@ contract Dcabs {
         
         if(currentTrip[otp].driverEnded &&  currentTrip[otp].customerEnded){
             
+            currentTrip[otp].endTime = now;
             currentTrip[otp].price = getPrice(currentTrip[otp].startTime, currentTrip[otp].endTime);
             currentTrip[otp].driverAddr.transfer(currentTrip[otp].price);
             currentTrip[otp].customerAddr.transfer(customers[currentTrip[otp].customerAddr].paid - currentTrip[otp].price);
             customers[currentTrip[otp].customerAddr].paid = 0;
-            currentTrip[otp].endTime = now;
             updateUniqueDrivers(currentTrip[otp].customerAddr, currentTrip[otp].driverAddr);
         }
     }
