@@ -57,13 +57,17 @@ contract Dcabs {
     mapping(address => Driver) drivers;           //!< Mapping b/w a driver profile and his wallet address
     mapping(uint => Trip) currentTrip;            //!< Mapping b/w an OTP and a trip object
     mapping(address => mapping(address => TripRequest)) activeTrips;  //!< Mapping b/w a driver address and a TripRequest object (corresponding to an ongoing trip)
-    uint cur;                                     //!< Variable storing most recent OTP
+    uint public cur = 1000;                                     //!< Variable storing most recent OTP
     uint public nDrivers = 0;
     
     constructor() public{
         auditor = msg.sender;
     }
-
+    
+    function getDriverRating(address driverAddr) public view returns (uint){
+        return drivers[driverAddr].reputation;
+    }
+    
     // Function to register a driver into the system
     function registerDriver (address driverAddr, uint license) public{
         require(msg.sender == auditor);
@@ -75,7 +79,7 @@ contract Dcabs {
     
     // Function to send a pickup request to a particular driver and pay a flat fee amount
     function setPickup(bytes32 encryptedPickup, bytes32 encryptedDest, address driverRequested) public payable{
-        require(msg.value >= 1 ether, "PAY UP THE MANDATORY FEE");
+        require(msg.value >= 10000, "PAY UP THE MANDATORY FEE");
         if(!customers[msg.sender].exists){
             customers[msg.sender].paid = 0;
             customers[msg.sender].nUniqueDrivers = 0;
@@ -168,7 +172,7 @@ contract Dcabs {
     // Function to update the list of drivers the customer has ridden with
     function updateReputation (uint rating, address customer, address driver) internal{
         require(rating <= 5 && rating > 0, "Invalid Rating");
-        uint weight = customers[customer].nUniqueDrivers / nDrivers;
+        uint weight = (customers[customer].nUniqueDrivers + 1);
         drivers[driver].reputation += rating * weight;
     }
     
