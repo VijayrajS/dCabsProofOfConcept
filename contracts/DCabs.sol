@@ -2,7 +2,6 @@ pragma solidity ^0.5.10;
 // TODO : 
 // * CancelRequest
 // * updateReputation
-// * updateUniqueDrivers
 
 contract DCabs {
     
@@ -50,9 +49,11 @@ contract DCabs {
     
     struct Customer{
         uint paid;              //!< The amount of money the customer has deposited in the contract
-        uint uniqueDrivers;     //!< Number of unique cab drivers the customer has ridden with
         // Trip[] customerTrips;   //!< List of all trips embarked on by the customer
         bool exists;            //!< Whether this customer has used the app before
+        
+        uint nUniqueDrivers;     //!< Number of unique cab drivers the customer has ridden with
+        mapping(address => bool) uniqueDriversMap; //!< A hashmap to determine whether a driver has ridden with the customer before 
     }
     
     mapping(address => Customer) customers;       //!< Mapping b/w a customer profile and his wallet address
@@ -148,7 +149,14 @@ contract DCabs {
     
     // Function to update the list of drivers the customer has ridden with
     function updateUniqueDrivers (address customer, address driver) pure internal{
+        // If the customer has already ridden with the driver do nothing
+        if(customers[customer].uniqueDriversMap[driver] == true){
+            return;
+        }
         
+        // Else update the mapping and increment the unique driver count
+        customers[customer].uniqueDriversMap[driver] = true;
+        customers[customer].nUniqueDrivers++;
     }
     
     // Function to update the list of drivers the customer has ridden with
