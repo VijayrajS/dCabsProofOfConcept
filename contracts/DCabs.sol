@@ -136,7 +136,7 @@ contract Dcabs {
         // Customer has ended the trip from his/her side  (Update the reputation of the driver)
         
         if(msg.sender == currentTrip[otp].customerAddr && !currentTrip[otp].customerEnded){
-            updateReputation(rating, currentTrip[otp].driverAddr, currentTrip[otp].customerAddr);
+            updateReputation(rating, currentTrip[otp].customerAddr, currentTrip[otp].driverAddr);
             currentTrip[otp].customerEnded = true;
         }
         // Driver has ended the trip from his/her side
