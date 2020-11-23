@@ -1,14 +1,10 @@
 pragma solidity ^0.5.10;
-// TODO : 
-// * CancelRequest
-// * updateReputation
 
 contract DCabs {
     
     address public auditor; //!< Person who authorises the registration of a cab driver into the system
     
-    //!< structure that stores trip data
-    
+    //structure that stores trip data
     struct Trip {
         bytes32 pickupHash; //!< Hash of the pickup address
         bytes32 destHash;   //!< Hash of the destination address 
@@ -41,7 +37,7 @@ contract DCabs {
     struct Driver{
         uint driverLicense;     //!< A verifiable hash of the driver's license
         uint reputation;        //!< Reputation score of the driver
-        // Trip[] driverTrips;     //!< List of all trips undertaken by the driver 
+        Trip[] driverTrips;     //!< List of all trips undertaken by the driver 
         bool registered;        //!< A boolean variable that determines whether the driver is registered or not
     }
     
@@ -49,7 +45,7 @@ contract DCabs {
     
     struct Customer{
         uint paid;              //!< The amount of money the customer has deposited in the contract
-        // Trip[] customerTrips;   //!< List of all trips embarked on by the customer
+        Trip[] customerTrips;   //!< List of all trips embarked on by the customer
         bool exists;            //!< Whether this customer has used the app before
         
         uint nUniqueDrivers;     //!< Number of unique cab drivers the customer has ridden with
@@ -105,11 +101,8 @@ contract DCabs {
     
     // Customer cancels the trip request.
     function cancelRequest(address driverRequested, uint index){
-        require(index < activeTrips[driverRequested].length, "Invalide request index");
-        require(activeTrips[driverRequested].customer == msg.sender, "Can only cancel your own requests");
-
-        activeTrips[driverRequested].encryptedPickup = encyptedPickup;
-        msg.sender
+        require(activeTrips[driverRequested][msg.sender].requestMade, "You haven't booked a cab");
+        activeTrips[driverRequested][msg.sender].requestMade = false;
     }
     
     // Linear function to get price based on time
@@ -166,7 +159,9 @@ contract DCabs {
     // Function to update the list of drivers the customer has ridden with
     function updateReputation (int rating, address customer, address driver) pure internal{
         require(rating <= 5 && rating > 0, "Invalid Rating");
-        
+        uint totDrivers = drivers.length;
+        uint weight = customers[customer].uniqueDrivers / totDrivers;
+        drivers[driver].reputation += rating * weight;
     }
     
     // Function to cancel trip (either by the customer or driver)
